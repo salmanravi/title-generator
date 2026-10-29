@@ -1,7 +1,7 @@
 {
   "name": "youtube-title-generator",
-  "version": "1.0.1",
-  "description": "Generator Judul Video YouTube dengan AI",
+  "version": "1.0.2",
+  "description": "Generator Judul Video YouTube dengan AI (Auto-Retry version)",
   "scripts": {
     "start": "echo 'Run on Vercel'"
   },
