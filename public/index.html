@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Judul Video AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 font-sans p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+            <div class="bg-blue-600 p-8 text-center">
+                <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> YouTube Title Generator AI
+                </h1>
+                <p class="text-blue-100 text-lg">Hasilkan judul dengan CTR tinggi berdasarkan nama produk dalam 1 klik</p>
+            </div>
+            
+            <div class="p-6 md:p-8">
+                <div class="mb-6">
+                    <label class="block text-slate-700 font-bold mb-2 text-lg">Nama Produk / Topik Utama:</label>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="text" id="productName" placeholder="Contoh: Samsung Galaxy A55, iPhone 15, dll..." 
+                            class="flex-1 px-4 py-4 text-lg border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition shadow-sm"
+                            onkeydown="if(event.key === 'Enter') generateTitles()">
+                        <button onclick="generateTitles()" id="btnGenerate" 
+                            class="bg-blue-600 text-white font-bold py-4 px-8 rounded-xl hover:bg-blue-700 hover:shadow-lg transition flex items-center justify-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-bolt"></i> Generate Ide Judul
+                        </button>
+                    </div>
+                </div>
+
+                <div id="loading" class="hidden my-12 text-center">
+                    <i class="fa-solid fa-circle-notch fa-spin text-5xl text-blue-500 mb-4"></i>
+                    <p class="text-slate-500 font-semibold text-lg animate-pulse">AI sedang meracik 8 topik judul terbaik...</p>
+                </div>
+
+                <div id="results" class="mt-8 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="resultsGrid">
+                        <!-- Hasil di-generate di sini -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function generateTitles() {
+            const productName = document.getElementById('productName').value;
+            if (!productName) {
+                alert('Tolong masukkan nama produk terlebih dahulu!');
+                return;
+            }
+
+            const btn = document.getElementById('btnGenerate');
+            const loading = document.getElementById('loading');
+            const resultsDiv = document.getElementById('results');
+            const resultsGrid = document.getElementById('resultsGrid');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            loading.classList.remove('hidden');
+            resultsDiv.classList.add('hidden');
+            resultsGrid.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productName })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error || 'Terjadi kesalahan server');
+
+                let htmlContent = '';
+                
+                const grouped = data.results.reduce((acc, curr) => {
+                    if(!acc[curr.topic]) acc[curr.topic] = [];
+                    acc[curr.topic].push(curr);
+                    return acc;
+                }, {});
+
+                for (const [topic, items] of Object.entries(grouped)) {
+                    htmlContent += `
+                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition h-full">
+                            <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200">
+                                <div class="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                                    <i class="fa-solid fa-hashtag"></i>
+                                </div>
+                                <h2 class="text-xl font-bold text-slate-800">${topic}</h2>
+                            </div>
+                            <ul class="space-y-4">
+                    `;
+                    
+                    items.forEach(item => {
+                        htmlContent += `
+                            <li class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative group flex flex-col h-full">
+                                <button onclick="navigator.clipboard.writeText('${item.title.replace(/'/g, "\\'")}')" class="absolute top-3 right-3 text-slate-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition" title="Salin Judul">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                                <div class="font-bold text-lg text-slate-900 pr-6 leading-tight">${item.title}</div>
+                                <div class="flex flex-wrap gap-2 mt-3 text-xs font-bold">
+                                    <span class="bg-green-100 text-green-700 px-2.5 py-1 rounded-md border border-green-200">
+                                        <i class="fa-solid fa-fire mr-1"></i> CTR: ${item.ctr_score}
+                                    </span>
+                                    <span class="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-md border border-purple-200">
+                                        <i class="fa-solid fa-magnet mr-1"></i> ${item.hook_type}
+                                    </span>
+                                </div>
+                                <div class="mt-3 mt-auto text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <span class="font-semibold text-slate-700">Kenapa bagus?</span> ${item.reason}
+                                </div>
+                            </li>
+                        `;
+                    });
+
+                    htmlContent += `</ul></div>`;
+                }
+
+                resultsGrid.innerHTML = htmlContent;
+                resultsDiv.classList.remove('hidden');
+
+            } catch (error) {
+                alert('Gagal mengambil data: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Generate Ide Judul';
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                loading.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
